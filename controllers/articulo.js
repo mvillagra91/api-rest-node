@@ -1,3 +1,4 @@
+const validarArticulo = require("../helpers/validar")
 const validator = require("validator")
 const Articulo = require("../models/Articulo")
 const { error } = require("console")
@@ -210,15 +211,6 @@ const editar = async (req, res) => {
         });
     }
 };
-
-const validarArticulo = async (parametros) => {
-    let validar_titulo = !validator.isEmpty(parametros.titulo);
-    let validar_contenido = !validator.isEmpty(parametros.contenido);
-
-    if (!validar_titulo || !validar_contenido) {
-        throw new Error("No se han validado los datos ingresados");
-    }
-}
 
 module.exports = {
     prueba, 

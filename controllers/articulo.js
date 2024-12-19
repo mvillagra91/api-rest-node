@@ -1,8 +1,10 @@
-const validarArticulo = require("../helpers/validar")
+const fs = require("fs")
+const path = require("path")
 const validator = require("validator")
 const Articulo = require("../models/Articulo")
 const { error } = require("console")
 
+//Funciones de prueba
 const prueba = (req, res) => {
 
     return res.status(200).json({
@@ -23,13 +25,21 @@ const curso = (req, res) => {
     ])
 }
 
+//Crea un articulo
 const crear = async (req, res) => {
     // Recoger parámetros por POST a guardar
     let parametros = req.body;
 
     // Validar datos
     try {
-        validarArticulo(parametros);
+        const validarArticulo = async (parametros) => {
+            let validar_titulo = !validator.isEmpty(parametros.titulo);
+            let validar_contenido = !validator.isEmpty(parametros.contenido);
+        
+            if (!validar_titulo || !validar_contenido) {
+                throw new Error("No se han validado los datos ingresados");
+            }
+        }
     } catch (error) {
         return res.status(400).json({
             status: "error",
@@ -57,6 +67,7 @@ const crear = async (req, res) => {
     }
 };
 
+//Lista todos los articulos
 const listar = async (req, res) => {
     try {
 
@@ -98,6 +109,7 @@ const listar = async (req, res) => {
     }
 };
 
+//Busca un articulo
 const uno = async (req, res) => {
     try {
         // Buscar id por la URL
@@ -129,6 +141,7 @@ const uno = async (req, res) => {
     }
 };
 
+//Elimina un articulo
 const borrar = async (req, res) => {
     try {
         // Obtener el ID de la URL
@@ -162,6 +175,7 @@ const borrar = async (req, res) => {
     }
 };
 
+//Edita un articulo
 const editar = async (req, res) => {
     try {
         // Obtener el ID de la URL
@@ -212,6 +226,127 @@ const editar = async (req, res) => {
     }
 };
 
+const subir = async (req, res) => {
+
+    //Configurar multer
+
+    //Recoger fichero de imagen subido
+    if(!req.file && !req.files){
+        return res.status(404).json({
+            status: "error",
+            mensaje: "Peticion invalida",
+        });
+    }
+
+    console.log(req.file);
+    //Nombre de la imagen
+    let archivo = req.file.originalname
+    //Conseguir la extension
+    let archivo_split = archivo.split('\.')
+    let extension = archivo_split[1];
+
+    //Comprobar extension correcta
+    if(extension != "png" && extension != "jpg" && 
+        extension != "jpeg" && extension != "gif"){
+            //borrar archivo y dar respuesta
+
+            fs.unlink(req.file.path, (error) => {
+                return res.status(400).json({
+                    status: "error",
+                    mensaje: "Imagen invalida",
+                });
+            })
+    }else{
+        try {
+            // Obtener el ID de la URL
+            let id = req.params.id;
+    
+            // Buscar y actualizar artículo
+            const articuloActualizado = await Articulo.findOneAndUpdate(
+                { _id: id }, 
+                {imagen: req.file.filename}, 
+                { new: true } // Devuelve el documento actualizado
+            );
+    
+            // Verificar si se encontró y actualizó el artículo
+            if (!articuloActualizado) {
+                return res.status(404).json({
+                    status: "error",
+                    mensaje: "No se encontró el artículo a actualizar",
+                });
+            }
+    
+            // Devolver respuesta exitosa
+            return res.status(200).json({
+                status: "success",
+                mensaje: "Articulo actualizado correctamente",
+                articulo: articuloActualizado,
+                fichero: req.file
+            });
+    
+        } catch (error) {
+            // Manejo de errores generales
+            return res.status(500).json({
+                status: "error",
+                mensaje: "Error al intentar actualizar el artículo",
+                error,
+            });
+        }
+    }
+}
+
+const imagen = async (req, res) => {
+    let fichero = req.params.fichero;
+    let ruta_fisica = "./imagenes/articulos/" + fichero;
+
+    fs.stat(ruta_fisica, (err, stats) => {
+        if (err || !stats) {
+            return res.status(404).json({
+                status: "Error",
+                mensaje: "La imagen no existe",
+            });
+        } else {
+            return res.sendFile(path.resolve(ruta_fisica));
+        }
+    });
+};
+
+const buscador = async (req, res) => {
+    try {
+        // Extraer el string de búsqueda desde los parámetros
+        let busqueda = req.params.busqueda;
+
+        // Realizar la búsqueda con condiciones OR
+        let articulosEncontrados = await Articulo.find({
+            "$or": [
+                { "titulo": { "$regex": busqueda, "$options": "i" } },
+                { "contenido": { "$regex": busqueda, "$options": "i" } }
+            ]
+        }).sort({ fecha: -1 }).exec();
+
+        // Si no se encuentran artículos, devolver un mensaje
+        if (!articulosEncontrados || articulosEncontrados.length === 0) {
+            return res.status(404).json({
+                status: "Error",
+                mensaje: "No se han encontrado artículos."
+            });
+        }
+
+        // Devolver los artículos encontrados
+        return res.status(200).json({
+            status: "Success",
+            articulos: articulosEncontrados
+        });
+    } catch (error) {
+        // Manejo de errores
+        return res.status(500).json({
+            status: "Error",
+            mensaje: "Ha ocurrido un error al buscar los artículos.",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     prueba, 
     curso,
@@ -219,5 +354,8 @@ module.exports = {
     listar,
     uno,
     borrar,
-    editar
+    editar,
+    subir,
+    imagen,
+    buscador
 }

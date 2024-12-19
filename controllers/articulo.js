@@ -28,12 +28,7 @@ const crear = async (req, res) => {
 
     // Validar datos
     try {
-        let validar_titulo = !validator.isEmpty(parametros.titulo);
-        let validar_contenido = !validator.isEmpty(parametros.contenido);
-
-        if (!validar_titulo || !validar_contenido) {
-            throw new Error("No se han validado los datos ingresados");
-        }
+        validarArticulo(parametros);
     } catch (error) {
         return res.status(400).json({
             status: "error",
@@ -215,6 +210,15 @@ const editar = async (req, res) => {
         });
     }
 };
+
+const validarArticulo = async (parametros) => {
+    let validar_titulo = !validator.isEmpty(parametros.titulo);
+    let validar_contenido = !validator.isEmpty(parametros.contenido);
+
+    if (!validar_titulo || !validar_contenido) {
+        throw new Error("No se han validado los datos ingresados");
+    }
+}
 
 module.exports = {
     prueba, 
